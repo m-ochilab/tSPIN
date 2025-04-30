@@ -1,0 +1,21 @@
+api_key: null
+cookie:
+  expiry_days: 30
+  key: some_key
+  name: some_cookie_name
+credentials:
+  usernames:
+    bundai:
+      email: masanao.oochi@gmail.com
+      failed_login_attempts: 0
+      first_name: oita
+      last_name: daigaku
+      logged_in: false
+      password: core
+      roles:
+      - admin
+      - editor
+      - viewer
+bsky_user:
+   handle: bcoredsclass0001.bsky.social
+   password: masanao_ochi
