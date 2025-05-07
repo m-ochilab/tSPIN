@@ -18,9 +18,16 @@ import streamlit.components.v1 as components
 import yaml
 from yaml.loader import SafeLoader
 
-es_addr="http://cicero.csis.oita-u.ac.jp:9200"
-es_request_timeout = 60
-es_timeout = "1m"
+import re
+from sklearn.feature_extraction.text import CountVectorizer
+from collections import Counter
+from sklearn.decomposition import LatentDirichletAllocation as LDA
+from bertopic import BERTopic
+
+
+es_addr="http://cicero.csis.oita-u.ac.jp:9200" #Elasticsearchアドレス
+es_request_timeout = 60 #タイムアウトする時間
+es_timeout = "1m" #サーバ処理時間の上限
 
 def analyze(config):
     import streamlit as st
@@ -28,15 +35,15 @@ def analyze(config):
     # 分析
     
     # Elasticsearch の接続先（環境に合わせて変更してください）
-    es = Elasticsearch(es_addr)
+    es = Elasticsearch(es_addr) #接続するだけ
     
     # サイドバー入力：クエリと期間
     st.sidebar.header("入力パラメータ")
-    query_str = st.sidebar.text_input("クエリ（例: Trump）", "Trump")
-    today = dt.date.today()
-    yesterday = today + relativedelta(days=-1)
-    twodaysago = today + relativedelta(days=-2)
-    start_date = st.sidebar.date_input("開始日", value=twodaysago)
+    query_str = st.sidebar.text_input("クエリ（例: Trump）", "Trump") #文字入力欄を作る
+    today = dt.date.today() #今日の日付
+    yesterday = today + relativedelta(days=-1) #昨日
+    twodaysago = today + relativedelta(days=-2) #一昨日
+    start_date = st.sidebar.date_input("開始日", value=twodaysago) #日付入力欄を作る
     end_date = st.sidebar.date_input("終了日", value=yesterday)
     language_option = st.sidebar.selectbox("対象言語", ["すべて", "英語", "日本語"])
     
@@ -69,15 +76,32 @@ def analyze(config):
     bluesky_password = config["bsky_user"]["password"]
 
     post_ts_df = get_post_time_series(es, query_str, start_date_str, end_date_str, lang_filter=language_filter)
-    st.subheader("1. 投稿数の時系列（10分刻み）")
+    st.subheader("1. 全体の投稿数の時系列（10分刻み）")
     #st.write(post_ts_df)
     st.plotly_chart(px.line(post_ts_df, x="time", y="count", title="投稿数の時系列"))
 
+    # Bluesky API用トークン取得（すでにconfigから）
+    token = get_auth_token(bluesky_handle, bluesky_password) if bluesky_handle and bluesky_password else None ##俣江追加コード
+    
     user_rank_df = get_post_user_ranking(es, query_str, start_date_str, end_date_str)
 
+# ユーザ名と表示名取得（並列取得）(matae)
+    if token:
+        did_list = user_rank_df['user'].tolist()
+        did_info_map = fetch_display_info_parallel(did_list, token)
+        user_rank_df["handle"] = user_rank_df["user"].map(lambda did: did_info_map.get(did, {}).get("handle", did))
+        user_rank_df["displayName"] = user_rank_df["user"].map(lambda did: did_info_map.get(did, {}).get("displayName", "不明"))
+    else:
+        user_rank_df["handle"] = user_rank_df["user"]
+        user_rank_df["displayName"] = "未取得"
+        
     # プロファイル情報を取得し、必要なカラムを追加
     user_rank_df['profile_url'] = user_rank_df['user'].apply(lambda did: f"https://bsky.app/profile/{did}")
     user_rank_df['profile_image'] = user_rank_df['user'].apply(get_profile_avatar_url)
+
+    # 認証情報がない場合はアバターを無効化（俣江）
+    if not token:
+        user_rank_df['profile_image'] = None
 
     # Bluesky APIを使ってアバターURLを取得
     if bluesky_handle and bluesky_password:  # 認証情報がある場合のみアバターを取得
@@ -85,13 +109,17 @@ def analyze(config):
     else:
         user_rank_df['profile_image'] = None  # 認証情報がない場合はアバターをNoneにする
 
-    st.subheader("2. 投稿数のユーザ別ランキング")
+    st.subheader("2. 全体の投稿数のユーザ別ランキング")
     st.dataframe(
-        user_rank_df,
+        user_rank_df[["displayName", "handle", "post_count", "profile_url", "profile_image"]], ##matae
         column_config={
-            "user": st.column_config.TextColumn(
-                "DID",
+            "displayName": st.column_config.TextColumn(
+                "ユーザ名",
                 disabled=True,  # DID を編集不可にする
+            ),
+            "handle": st.column_config.TextColumn( ##俣江
+                "ユーザID",
+                help="Blueskyのハンドル名"
             ),
             "post_count": st.column_config.NumberColumn(
                 "投稿数",
@@ -112,26 +140,39 @@ def analyze(config):
 
     block_rank_df = get_block_user_ranking(es, start_date_str, end_date_str)
 
-    # プロファイル情報を取得し、必要なカラムを追加
-    block_rank_df['profile_url'] = block_rank_df['user'].apply(lambda did: f"https://bsky.app/profile/{did}")
-    block_rank_df['profile_image'] = block_rank_df['user'].apply(get_profile_avatar_url)
-
     # Bluesky APIを使ってアバターURLを取得
     if bluesky_handle and bluesky_password: # 認証情報がある場合のみアバターを取得
         block_rank_df['profile_image'] = None # 認証情報がない場合はアバターをNoneにする
     else:
         block_rank_df['profile_image'] = None # 認証情報がない場合はアバターをNoneにする
 
+    # 4. 表示名/ハンドルの取得（並列化、高速化）
+    if token:
+        did_list_block = block_rank_df['user'].tolist()
+        did_info_map_block = fetch_display_info_parallel(did_list_block, token)
+        block_rank_df["handle"] = block_rank_df["user"].map(lambda did: did_info_map_block.get(did, {}).get("handle", did))
+        block_rank_df["displayName"] = block_rank_df["user"].map(lambda did: did_info_map_block.get(did, {}).get("displayName", "不明"))
+    else:
+        block_rank_df["handle"] = block_rank_df["user"]
+        block_rank_df["displayName"] = "未取得"
+
+    # プロファイル情報を取得し、必要なカラムを追加
+    block_rank_df['profile_url'] = block_rank_df['user'].apply(lambda did: f"https://bsky.app/profile/{did}")
+    block_rank_df['profile_image'] = block_rank_df['user'].apply(get_profile_avatar_url)
+
 
     st.subheader("3. ブロックされた数のユーザランキング")
     st.dataframe(
-        block_rank_df,
+        block_rank_df[["displayName", "handle", "block_count", "profile_url", "profile_image"]],
         column_config={
-            "user": st.column_config.TextColumn(
-                "DID",
-                disabled=True,  # DID を編集不可にする
+            "displayName": st.column_config.TextColumn(
+                "ユーザ名",
             ),
-            "block_count": st.column_config.NumberColumn(
+            "handle": st.column_config.TextColumn(
+                "ユーザID",
+                help="ユーザがブロックされた数"
+            ),
+            "block_count":st.column_config.NumberColumn(
                 "ブロック数",
                 help="ユーザがブロックされた数"
             ),
@@ -150,13 +191,21 @@ def analyze(config):
 
     st.markdown("""
     <style>
+        /* .repost-container {
+             background-color: #f9f9f9; /* 明るい背景色 */
+             border: 1px solid #e1e1e1; /* 細いボーダー */
+             padding: 15px; /* 少し広めのパディング */
+             margin-bottom: 15px; /* 下マージンも広めに */
+             border-radius: 10px; /* 角丸を少し大きめに */
+             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* 影を追加 */
+         } */
         .repost-container {
-            background-color: #f9f9f9; /* 明るい背景色 */
-            border: 1px solid #e1e1e1; /* 細いボーダー */
-            padding: 15px; /* 少し広めのパディング */
-            margin-bottom: 15px; /* 下マージンも広めに */
-            border-radius: 10px; /* 角丸を少し大きめに */
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* 影を追加 */
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(255, 255, 255, 0.05);
         }
         .repost-header {
             display: flex;
@@ -173,17 +222,24 @@ def analyze(config):
         }
         .repost-username {
             font-weight: bold; /* ユーザー名を太字に */
-            color: #333; /* 少し濃いめの文字色 */
+            color: #ffffff; /* 少し濃いめの文字色 */
             margin-right: auto; /* 右端に寄せる */
         }
         .repost-time {
             font-size: 0.9em; /* 少し小さめのフォントサイズ */
             color: #777; /* 少し薄めの文字色 */
         }
-        .repost-content {
+        
+        */.repost-content {
             margin-bottom: 10px;
             color: #555; /* 本文の文字色 */
             line-height: 1.5; /* 行間を調整 */
+        } */
+        .repost-content {
+            margin-bottom: 10px;
+            color: #f0f0f0;  /* 明るめの色に修正 */
+            line-height: 1.5;
+            white-space: pre-wrap;
         }
         .repost-link {
             color: #007bff; /* リンク色を強調 */
@@ -271,30 +327,46 @@ def analyze(config):
     st.markdown("""
     <style>
         /* 共通のスタイル */
-        .post-container {
+       /* .post-container {
             background-color: #f9f9f9;
             border: 1px solid #e1e1e1;
             padding: 15px;
             margin-bottom: 15px;
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        } */
+        .post-container {
+            background-color: #1e1e1e;  /* ダークグレー背景 */
+            border: 1px solid #444444;  /* 暗いグレーの枠線 */
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
         }
         .post-header {
             display: flex;
             align-items: center;
             margin-bottom: 10px;
         }
-        .post-header img {
+        /*.post-header img {
             border-radius: 50%;
             margin-right: 10px;
             width: 50px;
             height: 50px;
             border: 2px solid #fff;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }*/
+        .post-header img {
+            border-radius: 50%;
+            margin-right: 10px;
+            width: 50px;
+            height: 50px;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(255, 255, 255, 0.2);
         }
         .post-username {
             font-weight: bold;
-            color: #333;
+            color: #ffffff;
             margin-right: auto;
         }
         .post-time {
@@ -303,7 +375,7 @@ def analyze(config):
         }
         .post-content {
             margin-bottom: 10px;
-            color: #555;
+            color: #ffffff;
             line-height: 1.5;
         }
         .post-link {
@@ -395,7 +467,7 @@ def analyze(config):
     post_cluster_df["cluster_str"] = post_cluster_df["cluster"].astype(str)
 
     if post_cluster_df is not None:
-        st.subheader("6. 投稿内容のクラスタリング")
+        st.subheader("6. クエリにヒットした投稿の投稿内容のクラスタリング")
         fig = px.scatter(
             post_cluster_df,
             x="x",
@@ -417,10 +489,11 @@ def analyze(config):
     st.subheader("全体の特徴語ワードクラウド")
     # 1. 全体のワードクラウド（全投稿の頻度を使用）
     all_texts = post_cluster_df["text"].tolist()
+    cleaned_texts = [remove_urls(text) for text in all_texts] # ← URL除去
 
     # CountVectorizer を使って全体の単語頻度を計算（英語の stopwords を除外）
     vectorizer = CountVectorizer(stop_words="english")
-    all_matrix = vectorizer.fit_transform(all_texts)
+    all_matrix = vectorizer.fit_transform(cleaned_texts)
     overall_freq = np.array(all_matrix.sum(axis=0)).flatten()  # 各単語の総出現数
     vocab = vectorizer.get_feature_names_out()
     overall_dict = dict(zip(vocab, overall_freq))
@@ -441,6 +514,7 @@ def analyze(config):
     # 各クラスタごとに処理
     for cl in clusters:
         cluster_texts = post_cluster_df[post_cluster_df["cluster"] == cl]["text"].tolist()
+        cleaned_cluster_texts = [remove_urls(text) for text in cluster_texts]  # ← URL除去
         # 同じ vectorizer を使って、各クラスタの単語頻度を計算
         cluster_matrix = vectorizer.transform(cluster_texts)
         cluster_freq = np.array(cluster_matrix.sum(axis=0)).flatten()
@@ -590,7 +664,99 @@ def analyze(config):
     #    st.pyplot(plt)
     #else:
     #    st.write("リポストネットワークのデータがありません。")
+    # 11. 単語ランキング表示（Streamlit）
+    st.subheader("11. 投稿単語ランキング（ストップワード・URL除去後）")
+    
+    # CSSスタイル
+    st.markdown("""
+    <style>
+    .word-table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 10px;
+    }
+    .word-table th, .word-table td {
+        border: 1px solid #444;
+        padding: 8px 12px;
+        color: #fff;
+    }
+    .word-table th {
+        background-color: #333;
+        font-weight: bold;
+        text-align: left;
+    }
+    .word-table tr:nth-child(even) {
+        background-color: #2c2c2c;
+    }
+    .word-table tr:nth-child(odd) {
+        background-color: #1e1e1e;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # 関数を使ってランキングを取得
+    word_ranking = get_word_frequency_ranking(es, query_str, start_date_str, end_date_str, lang_filter=language_filter)
+    
+    # HTMLでランキング表示
+    if word_ranking:
+        ranking_html = """
+        <table class="word-table">
+            <thead>
+                <tr><th>順位</th><th>単語</th><th>出現回数</th></tr>
+            </thead><tbody>
+        """
+        for idx, (word, count) in enumerate(word_ranking, start=1):
+            ranking_html += f"<tr><td>{idx}</td><td>{word}</td><td>{count}</td></tr>"
+        ranking_html += "</tbody></table>"
+    
+        st.markdown(ranking_html, unsafe_allow_html=True)
+    else:
+        st.info("単語ランキングを生成できる投稿が見つかりませんでした。")
 
+    # === トピックモデリング（LDA） ===
+    if post_cluster_df is not None:
+        st.subheader("12.クエリにヒットした投稿のトピックモデリング（LDA）")
+        topic_data = perform_topic_modeling(post_cluster_df["text"].tolist(), n_topics=5, n_words=10)
+    
+        st.markdown("""
+        <style>
+            .topic-box {
+                background-color: #2a2a2a;
+                border: 1px solid #444;
+                border-radius: 10px;
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+            .topic-title {
+                font-weight: bold;
+                color: #4CAF50;
+                font-size: 1.1em;
+            }
+            .topic-words {
+                color: #ddd;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+    
+        for idx, words in topic_data:
+            st.markdown(f"""
+            <div class="topic-box">
+                <div class="topic-title">トピック {idx + 1}</div>
+                <div class="topic-words">{"、".join(words)}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    ##BERTopicによるトピックモデリングと可視化
+    if post_cluster_df is not None:
+        st.subheader("13. BERTopicによるトピックモデリングと可視化")
+        texts = post_cluster_df["text"].tolist()
+    
+        with st.spinner("BERTopic によるトピック抽出中..."):
+            topic_model, topics, probs, cleaned_texts = run_bertopic_modeling(texts)
+    
+        render_bertopic_visualizations(topic_model,texts)
+
+    
     return
 
 # ユーザ情報を取得する関数 (Elasticsearchのインデックス名を調整)
@@ -662,33 +828,36 @@ def get_avatar_url(handle: str, token: str):
 #########################
 def get_post_time_series(es, query, start, end, lang_filter=None):
     # 基本の must 条件
-    must_clauses = [
-        {"match": {"commit.record.text": query}},
-        {"range": {"commit.record.createdAt": {"gte": start, "lte": end}}}
+    must_clauses = [ #満たすべき条件
+        {"match": {"commit.record.text": query}}, #キーワード検索
+        {"range": {"commit.record.createdAt": {"gte": start, "lte": end}}} #日付フィルター
     ]
     # lang_filter が設定されていれば、"langs" フィールドに対する term フィルタを追加
     if lang_filter:
-        must_clauses.append({"term": {"commit.record.langs": lang_filter}})
+        must_clauses.append({"term": {"commit.record.langs": lang_filter}}) #言語フィルター
     
     body = {
-        "size": 0,
+        "size": 0, #ヒットしたデータは不要。件数のみ集計
         "query": {
             "bool": {
-                "must": must_clauses
+                "must": must_clauses #条件
             }
         },
-        "aggs": {
+        "aggs": { #10分ごとの投稿集計
             "posts_over_time": {
                 "date_histogram": {
                     "field": "commit.record.createdAt",
-                    "fixed_interval": "10m"
+                    "fixed_interval": "10m" #ここで時間間隔の変更が出来る
                 }
             }
         }
     }
 
 #    st.write(body)
-    res = es.search(index="postindex-*", body=body, request_timeout=es_request_timeout, timeout=es_timeout)
+    
+    #postindexという名前がついたインデックス群から検索する
+    res = es.search(index="postindex-*", body=body, request_timeout=es_request_timeout, timeout=es_timeout) 
+    #データを成形して、表に変換
     buckets = res["aggregations"]["posts_over_time"]["buckets"]
     df = pd.DataFrame([{"time": b["key_as_string"], "count": b["doc_count"]} for b in buckets])
     return df
@@ -758,7 +927,7 @@ def get_block_user_ranking(es, start, end):
 def get_post_uris_and_texts(es, query, start, end):
     # クエリ条件に合致する投稿を取得
     body = {
-        "size": 1000,  # 必要件数に応じて調整
+        "size": 1000, #必要件数に応じて調整
         "query": {
             "bool": {
                 "must": [
@@ -998,7 +1167,10 @@ def generate_profile_wordclouds(df, cluster_col="cluster_str", text_col="descrip
     # 各クラスタごとにテキストをまとめる
     cluster_texts = {}
     for cluster in df[cluster_col].unique():
-        texts = df[df[cluster_col] == cluster][text_col].tolist()
+        # texts = df[df[cluster_col] == cluster][text_col].tolist()
+        # 修正後
+        texts = [remove_urls(text) for text in df[df[cluster_col] == cluster][text_col].tolist()]
+
         # 複数テキストを1つの文字列に連結
         cluster_texts[cluster] = " ".join(texts)
     
@@ -1157,4 +1329,211 @@ def create_repost_network(es, query, start, end):
 
     return G
 
+#########################
+## ユーザのDIDからユーザ名をAPIを用いて取得する関数
+#########################
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+def fetch_usernames_parallel(did_list, token, max_workers=10):
+    """
+    DIDリストに対してBluesky APIを並列実行してユーザ名を取得する。
+
+    Parameters:
+        did_list (list): ユニークなDIDのリスト
+        token (str): JWTトークン
+        max_workers (int): 並列スレッド数
+
+    Returns:
+        dict: {did: username} のマッピング
+    """
+    result = {}
+    cache = {}
+
+    def task(did):
+        if did in cache:
+            return did, cache[did]
+        username = get_username_from_did(did, token)
+        cache[did] = username
+        return did, username
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_did = {executor.submit(task, did): did for did in set(did_list)}
+        for future in as_completed(future_to_did):
+            did, username = future.result()
+            result[did] = username
+    return result
+
+##############################
+# ユーザのDIDからディスプレイネームをAPIを用いて取得する関数
+##############################
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import requests
+
+def fetch_display_info_parallel(did_list, token, max_workers=10):
+    """
+    各DIDに対応する handle と displayName を並列で取得する。
     
+    Parameters:
+        did_list (list of str): DIDのリスト
+        token (str): JWTトークン
+        max_workers (int): スレッド数
+
+    Returns:
+        dict: {did: {"handle": ..., "displayName": ...}} の辞書
+    """
+    cache = {}
+
+    def fetch(did):
+        if did in cache:
+            return did, cache[did]
+        url = f"https://bsky.social/xrpc/app.bsky.actor.getProfile?actor={did}"
+        headers = {"Authorization": f"Bearer {token}"}
+        try:
+            resp = requests.get(url, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+            info = {
+                "handle": data.get("handle"),
+                "displayName": data.get("displayName")
+            }
+            cache[did] = info
+            return did, info
+        except Exception as e:
+            return did, {"handle": did, "displayName": "取得失敗"}
+
+    result = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_did = {executor.submit(fetch, did): did for did in set(did_list)}
+        for future in as_completed(future_to_did):
+            did, info = future.result()
+            result[did] = info
+    return result
+#################################
+# テキストの中の無駄なURLの単語を除去する関数 
+#################################
+
+def remove_urls(text):
+    return re.sub(r'https?://\S+|www\.\S+', '', text)
+
+#################################
+# 投稿データから単語を抽出し、単語ランキングを作成
+#################################
+def get_word_frequency_ranking(es, query, start, end, lang_filter=None, top_n=25):
+    # 1. Elasticsearch から投稿を取得
+    must_clauses = [
+        {"match": {"commit.record.text": query}},
+        {"range": {"commit.record.createdAt": {"gte": start, "lte": end}}}
+    ]
+    if lang_filter:
+        must_clauses.append({"term": {"commit.record.langs": lang_filter}})
+    
+    body = {
+        "size": 1000,
+        "query": {
+            "bool": {
+                "must": must_clauses
+            }
+        }
+    }
+    res = es.search(index="postindex-*", body=body, request_timeout=es_request_timeout, timeout=es_timeout)
+    texts = [hit["_source"]["commit"]["record"].get("text", "") for hit in res["hits"]["hits"]]
+    
+    # 2. 前処理（URL除去 + 空でないもの）
+    cleaned_texts = [remove_urls(t) for t in texts if t.strip()]
+    
+    # 3. CountVectorizerでストップワードを除いた頻度集計
+    vectorizer = CountVectorizer(stop_words="english")
+    matrix = vectorizer.fit_transform(cleaned_texts)
+    vocab = vectorizer.get_feature_names_out()
+    counts = matrix.sum(axis=0).A1  # flatten sparse matrix
+    
+    # 4. 頻度辞書 → ランキング形式
+    word_freq = list(zip(vocab, counts))
+    word_freq.sort(key=lambda x: x[1], reverse=True)
+    
+    return word_freq[:top_n]  # 上位N件を返す
+    
+#################################
+# 投稿データからトピックモデリングを行い、そのクエリの所属する話題を調べる
+#################################
+
+def perform_topic_modeling(texts, n_topics=5, n_words=10):
+    """
+    LDAを使ってトピックモデリングを行い、各トピックの上位語を返す
+
+    Parameters:
+        texts (list of str): 投稿テキスト
+        n_topics (int): トピック数
+        n_words (int): 各トピックで表示する語数
+
+    Returns:
+        topic_words (list of tuples): [(topic_index, [word1, word2, ...]), ...]
+    """
+    from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+
+    # 前処理（URL除去、ストップワード除外）
+    cleaned_texts = [remove_urls(t) for t in texts]
+    vectorizer = CountVectorizer(stop_words='english')
+    doc_term_matrix = vectorizer.fit_transform(cleaned_texts)
+
+    lda_model = LDA(n_components=n_topics, random_state=42)
+    lda_model.fit(doc_term_matrix)
+
+    words = vectorizer.get_feature_names_out()
+    topic_words = []
+    for topic_idx, topic in enumerate(lda_model.components_):
+        top_words_idx = topic.argsort()[-n_words:][::-1]
+        top_words = [words[i] for i in top_words_idx]
+        topic_words.append((topic_idx, top_words))
+
+    return topic_words
+
+#################################
+# 投稿データからトピックモデリングを行う。（BERTopic）
+#################################
+    
+def run_bertopic_modeling(texts, language="english"):
+    """
+    BERTopic を使ってトピックモデリングを実行し、モデルとトピックを返す
+    - URL除去
+    - ストップワード対応（CountVectorizer）
+    """
+    from sklearn.feature_extraction.text import CountVectorizer
+    from bertopic import BERTopic
+
+    # --- 前処理: URL除去 ---
+    cleaned_texts = [remove_urls(t) for t in texts if t.strip()]
+
+    # --- ストップワード付きVectorizerを使う ---
+    vectorizer_model = CountVectorizer(stop_words=language)
+
+    # --- BERTopic モデル構築 ---
+    topic_model = BERTopic(vectorizer_model=vectorizer_model, language=language)
+    topics, probs = topic_model.fit_transform(cleaned_texts)
+
+    return topic_model, topics, probs, cleaned_texts  # ← 後で使うため返却
+
+
+#################################
+# 投稿データからトピックモデリングを行ったものに対して可視化を行う。機能部部は別関数。（BERTopic）
+#################################
+
+import streamlit as st
+def render_bertopic_visualizations(model, docs):
+    """
+    BERTopic の可視化図を Streamlit に表示する
+    """
+    plots = [
+        ("トピックの頻度", model.visualize_barchart()),
+        ("トピックの階層構造", model.visualize_hierarchy()),
+        ("トピック同士の関係（ネットワーク）", model.visualize_topics()),
+        ("トピック間の類似度マップ（ヒートマップ）", model.visualize_heatmap()),
+        ("各文書のトピック可視化（UMAP）", model.visualize_documents(docs)),
+        ("用語の重要度の比較", model.visualize_term_rank())
+    ]
+
+    for title, fig in plots:
+        st.subheader(title)
+        components.html(fig.to_html(), height=600, scrolling=True)
