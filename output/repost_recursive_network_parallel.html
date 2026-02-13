@@ -1,0 +1,155 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 750px;
+                 background-color: #ffffff;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#97c2fc", "id": "did:plc:tx2gm675wv2mgfdjq6qnd52p", "label": "did:plc:tx2gm675wv2mgfdjq6qnd52p", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "label": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:mnsy6btvbffd2mgc7sc4wzwy", "label": "did:plc:mnsy6btvbffd2mgc7sc4wzwy", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:263pdyc6pvx7yju2iqm5kxgh", "label": "did:plc:263pdyc6pvx7yju2iqm5kxgh", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:ruxj5ygukyc3stve45rgw45u", "label": "did:plc:ruxj5ygukyc3stve45rgw45u", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:kmozskcsexzw2hfr7n7uh7et", "label": "did:plc:kmozskcsexzw2hfr7n7uh7et", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:p7uum4y33e3gfm6gkxx7g37z", "label": "did:plc:p7uum4y33e3gfm6gkxx7g37z", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:zlofb3rxqaag7p5mccf62ncw", "label": "did:plc:zlofb3rxqaag7p5mccf62ncw", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:ynyveknvs4gdgjxjlkpwdt5j", "label": "did:plc:ynyveknvs4gdgjxjlkpwdt5j", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:d6k4y3emegajzhm4fo4p64zs", "label": "did:plc:d6k4y3emegajzhm4fo4p64zs", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:2in5llphoabglub5k625qfl2", "label": "did:plc:2in5llphoabglub5k625qfl2", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:v5wubdqr2wfgndbufi77aoon", "label": "did:plc:v5wubdqr2wfgndbufi77aoon", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:uw23iejx3tw7wri5auqlmqfj", "label": "did:plc:uw23iejx3tw7wri5auqlmqfj", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:7arp6cuc4mbh43a5tcb2g4gy", "label": "did:plc:7arp6cuc4mbh43a5tcb2g4gy", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:yjewxri7tqjyxtlsbne7vksj", "label": "did:plc:yjewxri7tqjyxtlsbne7vksj", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:67c4rzsqvd4427wxm5grh2eq", "label": "did:plc:67c4rzsqvd4427wxm5grh2eq", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:y6sjcbapshgziioyeqp7qby5", "label": "did:plc:y6sjcbapshgziioyeqp7qby5", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:5owkzuueub7jiimjfjq2isiz", "label": "did:plc:5owkzuueub7jiimjfjq2isiz", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:ubd65lrydxcjwnaduy45zr2o", "label": "did:plc:ubd65lrydxcjwnaduy45zr2o", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:3qxzf5ndz3dyyro3iletim3t", "label": "did:plc:3qxzf5ndz3dyyro3iletim3t", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:zdefqys7yjqg7qxmnybdzjat", "label": "did:plc:zdefqys7yjqg7qxmnybdzjat", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:rnp4okxt766sax35h2qsgdhr", "label": "did:plc:rnp4okxt766sax35h2qsgdhr", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:hj252ocx3cfiecfkmwxexg4s", "label": "did:plc:hj252ocx3cfiecfkmwxexg4s", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:b4g2bwypuyfo2qdov34cqkxi", "label": "did:plc:b4g2bwypuyfo2qdov34cqkxi", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:ypteldnsw5ksmntr2b7mcecm", "label": "did:plc:ypteldnsw5ksmntr2b7mcecm", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:hwzvoyeezc7njiuss5bonb65", "label": "did:plc:hwzvoyeezc7njiuss5bonb65", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:o236pw6sfuamjd6wpmo5ja2b", "label": "did:plc:o236pw6sfuamjd6wpmo5ja2b", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:blugtnwci44ith5gxnptp7na", "label": "did:plc:blugtnwci44ith5gxnptp7na", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:3uwhz4hytwdinuzhmadq73dn", "label": "did:plc:3uwhz4hytwdinuzhmadq73dn", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:torvztw6my64uu5pa3boexad", "label": "did:plc:torvztw6my64uu5pa3boexad", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:72zqvygzouel5byw7nlhv4zr", "label": "did:plc:72zqvygzouel5byw7nlhv4zr", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:xni4t6sr5qw5nduim24tyql3", "label": "did:plc:xni4t6sr5qw5nduim24tyql3", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "label": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:7ikb564y3ze6e2tktskm4spn", "label": "did:plc:7ikb564y3ze6e2tktskm4spn", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:aumqh2nhxwb5i5dyr2snu53a", "label": "did:plc:aumqh2nhxwb5i5dyr2snu53a", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:4s2cek5no6axwl2yucmwz2yn", "label": "did:plc:4s2cek5no6axwl2yucmwz2yn", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:3dvxs53kzjez5oxcbucfsacf", "label": "did:plc:3dvxs53kzjez5oxcbucfsacf", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:tuuacbdcdqputzmmwn6fgvr5", "label": "did:plc:tuuacbdcdqputzmmwn6fgvr5", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:n75y2xxa3mstginnl2sdri22", "label": "did:plc:n75y2xxa3mstginnl2sdri22", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:ccppfkz7ghccha36bqggy2ch", "label": "did:plc:ccppfkz7ghccha36bqggy2ch", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:7enou3zzpw6xct3a3ztimbas", "label": "did:plc:7enou3zzpw6xct3a3ztimbas", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:mllhz3jyxvsaqnnudtl6nbjo", "label": "did:plc:mllhz3jyxvsaqnnudtl6nbjo", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:ugxohkznt3knktapf67aydub", "label": "did:plc:ugxohkznt3knktapf67aydub", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:lvnv53efujbl2h3b76xibnr4", "label": "did:plc:lvnv53efujbl2h3b76xibnr4", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:adf3jsv4omub4jcl2wxrv6xr", "label": "did:plc:adf3jsv4omub4jcl2wxrv6xr", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:tda2ptp2ty362cjb6t4rsrfy", "label": "did:plc:tda2ptp2ty362cjb6t4rsrfy", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:ddsn7dzow47qhsugzgdrl4nh", "label": "did:plc:ddsn7dzow47qhsugzgdrl4nh", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:4sdugnpu246p7bbtksf5xlhk", "label": "did:plc:4sdugnpu246p7bbtksf5xlhk", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:u3vltj4gccv75o3rhhlfyqqw", "label": "did:plc:u3vltj4gccv75o3rhhlfyqqw", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:vjqcyhpotnobkkub6t2rlm6x", "label": "did:plc:vjqcyhpotnobkkub6t2rlm6x", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:nzcl3iywetedzfcraz23n6wa", "label": "did:plc:nzcl3iywetedzfcraz23n6wa", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:3nup7us6eyzhcp2cehu72mbq", "label": "did:plc:3nup7us6eyzhcp2cehu72mbq", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:573t4ja6tlgpmgu2dbpfj7gm", "label": "did:plc:573t4ja6tlgpmgu2dbpfj7gm", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:dmsijmpc24eco5of6qdrdbd5", "label": "did:plc:dmsijmpc24eco5of6qdrdbd5", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:zgsrmiu3wrajqa4kw65fa5rr", "label": "did:plc:zgsrmiu3wrajqa4kw65fa5rr", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:7v6vpcpq5ymea42a5qomfrkx", "label": "did:plc:7v6vpcpq5ymea42a5qomfrkx", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:t6dam3bgqznk42dyisw2wtco", "label": "did:plc:t6dam3bgqznk42dyisw2wtco", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:24t2qe7g3eof4alkhohgdkn6", "label": "did:plc:24t2qe7g3eof4alkhohgdkn6", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:pt5gccs3jrdp762ii6paerdg", "label": "did:plc:pt5gccs3jrdp762ii6paerdg", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:h3q72eq6bc62ymvlcuarw5a3", "label": "did:plc:h3q72eq6bc62ymvlcuarw5a3", "shape": "dot", "size": 10}, {"color": "#97c2fc", "id": "did:plc:gubb27pp376t62c7nc5tbuul", "label": "did:plc:gubb27pp376t62c7nc5tbuul", "shape": "dot", "size": 10}]);
+                  edges = new vis.DataSet([{"arrows": "to", "from": "did:plc:tx2gm675wv2mgfdjq6qnd52p", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:mnsy6btvbffd2mgc7sc4wzwy", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:263pdyc6pvx7yju2iqm5kxgh", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:ruxj5ygukyc3stve45rgw45u", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:ruxj5ygukyc3stve45rgw45u", "to": "did:plc:ruxj5ygukyc3stve45rgw45u", "width": 1}, {"arrows": "to", "from": "did:plc:kmozskcsexzw2hfr7n7uh7et", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:p7uum4y33e3gfm6gkxx7g37z", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:zlofb3rxqaag7p5mccf62ncw", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:ynyveknvs4gdgjxjlkpwdt5j", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:d6k4y3emegajzhm4fo4p64zs", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:2in5llphoabglub5k625qfl2", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:v5wubdqr2wfgndbufi77aoon", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:uw23iejx3tw7wri5auqlmqfj", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:7arp6cuc4mbh43a5tcb2g4gy", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:yjewxri7tqjyxtlsbne7vksj", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:67c4rzsqvd4427wxm5grh2eq", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:y6sjcbapshgziioyeqp7qby5", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:5owkzuueub7jiimjfjq2isiz", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:ubd65lrydxcjwnaduy45zr2o", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:3qxzf5ndz3dyyro3iletim3t", "to": "did:plc:ruxj5ygukyc3stve45rgw45u", "width": 1}, {"arrows": "to", "from": "did:plc:zdefqys7yjqg7qxmnybdzjat", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:rnp4okxt766sax35h2qsgdhr", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:hj252ocx3cfiecfkmwxexg4s", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:b4g2bwypuyfo2qdov34cqkxi", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:ypteldnsw5ksmntr2b7mcecm", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:hwzvoyeezc7njiuss5bonb65", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:o236pw6sfuamjd6wpmo5ja2b", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:blugtnwci44ith5gxnptp7na", "to": "did:plc:ohrghfm2tnjqyyxjh5y3224n", "width": 1}, {"arrows": "to", "from": "did:plc:3uwhz4hytwdinuzhmadq73dn", "to": "did:plc:zlofb3rxqaag7p5mccf62ncw", "width": 1}, {"arrows": "to", "from": "did:plc:torvztw6my64uu5pa3boexad", "to": "did:plc:zlofb3rxqaag7p5mccf62ncw", "width": 1}, {"arrows": "to", "from": "did:plc:72zqvygzouel5byw7nlhv4zr", "to": "did:plc:zlofb3rxqaag7p5mccf62ncw", "width": 1}, {"arrows": "to", "from": "did:plc:xni4t6sr5qw5nduim24tyql3", "to": "did:plc:uw23iejx3tw7wri5auqlmqfj", "width": 1}, {"arrows": "to", "from": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "to": "did:plc:uw23iejx3tw7wri5auqlmqfj", "width": 1}, {"arrows": "to", "from": "did:plc:7ikb564y3ze6e2tktskm4spn", "to": "did:plc:uw23iejx3tw7wri5auqlmqfj", "width": 1}, {"arrows": "to", "from": "did:plc:aumqh2nhxwb5i5dyr2snu53a", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:4s2cek5no6axwl2yucmwz2yn", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:3dvxs53kzjez5oxcbucfsacf", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:tuuacbdcdqputzmmwn6fgvr5", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:n75y2xxa3mstginnl2sdri22", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:ccppfkz7ghccha36bqggy2ch", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:7enou3zzpw6xct3a3ztimbas", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:mllhz3jyxvsaqnnudtl6nbjo", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:ugxohkznt3knktapf67aydub", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:lvnv53efujbl2h3b76xibnr4", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:adf3jsv4omub4jcl2wxrv6xr", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:tda2ptp2ty362cjb6t4rsrfy", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:ddsn7dzow47qhsugzgdrl4nh", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:4sdugnpu246p7bbtksf5xlhk", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:u3vltj4gccv75o3rhhlfyqqw", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:vjqcyhpotnobkkub6t2rlm6x", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:nzcl3iywetedzfcraz23n6wa", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:3nup7us6eyzhcp2cehu72mbq", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:573t4ja6tlgpmgu2dbpfj7gm", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:dmsijmpc24eco5of6qdrdbd5", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:zgsrmiu3wrajqa4kw65fa5rr", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:7v6vpcpq5ymea42a5qomfrkx", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:t6dam3bgqznk42dyisw2wtco", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:24t2qe7g3eof4alkhohgdkn6", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:pt5gccs3jrdp762ii6paerdg", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:h3q72eq6bc62ymvlcuarw5a3", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}, {"arrows": "to", "from": "did:plc:gubb27pp376t62c7nc5tbuul", "to": "did:plc:eftxuebd5mmok5j5w5rbdqnw", "width": 1}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>

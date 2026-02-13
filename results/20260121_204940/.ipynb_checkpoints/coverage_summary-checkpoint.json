@@ -1,0 +1,9 @@
+{
+  "num_users_total": 1264,
+  "num_negative_users": 894,
+  "negative_ratio": 0.7072784810126582,
+  "num_edges": 31098,
+  "nnif_pairs_success": 27920,
+  "num_topics": 0,
+  "num_communities": 1264
+}

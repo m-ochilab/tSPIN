@@ -1,0 +1,8 @@
+bertopic>=0.15.0
+bertopic[visualization]>=0.15.0
+sentence-transformers>=2.2.2
+umap-learn>=0.5.3
+hdbscan
+transformers>=4.30.0
+fugashi[unidic-lite]
+deberta-emotion-predictor
