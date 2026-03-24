@@ -25,7 +25,7 @@ conda env create -f environment.yml
 # 環境のアクティベート
 conda activate spin
 micromamba を使用する場合（より高速な構築を推奨）
-Bash
+
 # プロジェクトディレクトリに移動
 cd tSPIN
 
@@ -38,7 +38,7 @@ micromamba activate spin
 数百万件規模のデータ処理を行うため、処理中にSSH接続等が切断されても計算が継続できるよう、仮想端末（byobu）上で実行します。
 
 Step-by-Step 実行コマンド
-Bash
+
 # 1. 仮想端末（byobu）を起動（接続切れ対策）
 byobu
 
