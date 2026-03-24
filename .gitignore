@@ -4,4 +4,6 @@ env/
 build/
 dist/
 .env
+spin-epik
+
 

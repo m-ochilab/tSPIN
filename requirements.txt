@@ -1,26 +1,36 @@
+# --- requirements-core ---
 streamlit
 streamlit-authenticator
 pyyaml
 elasticsearch>=8,<9
 pandas
-plotly
+numpy
 scikit-learn==1.4.2
 networkx
+plotly
 matplotlib
-numpy
-wordcloud
 pyvis
-bertopic
+wordcloud
+seaborn
 jinja2>=3.0
+emoji
+spacy
+sudachipy
+sudachidict_core
+torch>=2.0.0
+torchvision>=0.15.0
+numba
+
+# --- requirements-topic ---
+bertopic>=0.15.0
 bertopic[visualization]>=0.15.0
 sentence-transformers>=2.2.2
 umap-learn>=0.5.3
-numpy>=1.21.0
-pandas>=1.3.0
-transformers>=4.30.0
-torch>=1.12.0
 hdbscan
-seaborn
+transformers>=4.30.0
 fugashi[unidic-lite]
 deberta-emotion-predictor
-emoji
+
+# --- 追加（コード内でimportされているが漏れていたもの） ---
+requests
+python-dateutil
