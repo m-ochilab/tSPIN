@@ -17,7 +17,7 @@
 ### conda を使用する場合
 ```bash
 # プロジェクトディレクトリに移動
-cd bsky_es_analysis_app
+cd tSPIN
 
 # ymlファイルから仮想環境（spin）を構築
 conda env create -f environment.yml
@@ -27,7 +27,7 @@ conda activate spin
 micromamba を使用する場合（より高速な構築を推奨）
 Bash
 # プロジェクトディレクトリに移動
-cd bsky_es_analysis_app
+cd tSPIN
 
 # ymlファイルから仮想環境（spin）を構築
 micromamba env create -f environment_spin.yml

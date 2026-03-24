@@ -11,28 +11,48 @@
 
 ---
 
-## 2. 実行手順 (Execution Guide)
-数百万件規模のデータ処理を行うため、処理中にSSH接続等が切断されても計算が継続できるよう、仮想端末（`byobu`）上で実行します。
+## 2. 環境構築 (Environment Setup)
+本システムはGPU（PyTorch）や特定のトピックモデリングライブラリに依存しているため、別サーバーや新環境で実行する際は、同梱の `environment.yml` を用いて全く同じパッケージ構成の仮想環境を再現してください。
 
-### Step-by-Step 実行コマンド
+### conda を使用する場合
 ```bash
-# 1. プロジェクトディレクトリに移動
-cd bsky_es_analysis_app
+# プロジェクトディレクトリに移動
+cd tSPIN
 
-# 2. 仮想端末（byobu）を起動（接続切れ対策）
-byobu new -t (仮想環境名)
+# ymlファイルから仮想環境（spin）を構築
+conda env create -f environment.yml
 
-# 3. 環境変数の再読み込み（byobu内でcondaコマンドを有効にするため）
+# 環境のアクティベート
+conda activate spin
+micromamba を使用する場合（より高速な構築を推奨）
+Bash
+# プロジェクトディレクトリに移動
+cd tSPIN
+
+# ymlファイルから仮想環境（spin）を構築
+micromamba env create -f environment_spin.yml
+
+# 環境のアクティベート
+micromamba activate spin
+3. 実行手順 (Execution Guide)
+数百万件規模のデータ処理を行うため、処理中にSSH接続等が切断されても計算が継続できるよう、仮想端末（byobu）上で実行します。
+
+Step-by-Step 実行コマンド
+Bash
+# 1. 仮想端末（byobu）を起動（接続切れ対策）
+byobu
+
+# 2. 環境変数の再読み込み（byobu内でconda/micromambaコマンドを有効にするため）
 source ~/.bashrc
 
-# 4. 分析用の仮想環境（spin）をアクティベート
-conda activate spin
+# 3. 分析用の仮想環境（spin）をアクティベート
+conda activate spin  # または micromamba activate spin
 
-# 5. メインパイプラインの実行
+# 4. メインパイプラインの実行
 python run_spin_cli_en.py
 (※ byobu からデタッチ（バックグラウンドに回して抜ける）する場合は F6 キー、または Ctrl + a の後に d を押してください。)
 
-3. システム構成と主要スクリプト (Codebase Architecture)
+4. システム構成と主要スクリプト (Codebase Architecture)
 本システムは、数百万件のテキストデータとネットワークデータを現実的な時間で処理するため、高度な並列処理とメモリ最適化が施されています。
 
 📊 データ抽出・前処理
@@ -60,7 +80,7 @@ NNIFとBERTopicの結果を統合し、内部循環と外部攻撃のテンソ�
 research_output_en.py / Topic_heatmap.py
 結果の出力と可視化。20×20のフル・ブロックマトリックスを作成し、Spectral Co-clusteringを用いて陣営（Ukr/Rus）の境界を維持したまま類似トピックを並べ替える階層的ヒートマップ（Outside-In Layout）を自動生成します。
 
-4. 出力ファイル (Output Artifacts)
+5. 出力ファイル (Output Artifacts)
 run_spin_cli_en.py が正常に完了すると、タイムスタンプ付きのディレクトリ（例: results/YYYYMMDD_HHMMSS/）に以下のファイル群が出力されます。
 
 heatmap_coclustering_hierarchical_Ukr_Rus.pdf / .png:
@@ -75,7 +95,7 @@ topic_details_summary.md / table_topic_details.csv:
 table_4_2_asymmetry_analysis.csv:
 双方向のスコア差分（非対称性）が大きいトピックペアのランキング。
 
-5. 今後の展望・既知の課題 (Future Work)
+6. 今後の展望・既知の課題 (Future Work)
 データ疎性（Data Sparsity）への対応: 投稿数が極端に少ないトピックペアでスコアが不安定になる場合があるため、ベイズ推定等を用いた平滑化（Smoothing）の導入余地があります。
 
 時系列分析（Longitudinal Analysis）: 現状の静的なスナップショットから、NNIFのタイムスタンプ情報を活かした「対立の波及プロセス」の動的モデル化への拡張。
