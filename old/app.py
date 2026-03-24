@@ -19,6 +19,9 @@ import yaml
 from yaml.loader import SafeLoader
 
 import analyze
+import research_matae
+import run_spin_cli
+from run_spin_app_st import run_spin_streamlit
 
 # このスクリプトと同じディレクトリの icons/logo.png をアイコンにしたい例
 icon_path = os.path.join(os.path.dirname(__file__), "icons", "logo.png")
@@ -42,16 +45,16 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
-
 # ログインメソッドで入力フォームを配置
 authenticator.login(location='main')
 
 if st.session_state.get('authentication_status'):
     authenticator.logout()
     st.write(f'Welcome *{st.session_state.get("name")}*')
-    analyze.analyze(config)
+    # analyze.analyze(config)
+    # research_matae.analyze_spin(config)
+    run_spin_streamlit()
 elif st.session_state.get('authentication_status') is False:
     st.error('Username/password is incorrect')
 elif st.session_state.get('authentication_status') is None:
     st.warning('Please enter your username and password')
-

@@ -1,0 +1,9 @@
+.venv/
+venv/
+env/
+build/
+dist/
+.env
+spin-epik
+
+

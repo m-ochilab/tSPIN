@@ -1,0 +1,4 @@
+=== Global tSPIN Results ===
+Global tSPIN: 0.5000
+Global Intra-Neg Ratio: 0.0000
+Global Inter-Neg Ratio: 1.0000
